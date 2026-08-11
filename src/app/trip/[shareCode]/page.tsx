@@ -7,7 +7,7 @@ import Modal from '@/components/Modal';
 import { 
   Crown, Copy, Check, Plus, Minus, Trash2, 
   PlusCircle, LogOut, Loader2, Backpack, Smile, 
-  AlertCircle, Tent, Flame, Lightbulb, Package, Shield
+  AlertCircle, Tent, Flame, Lightbulb, Package, Shield, Pencil
 } from 'lucide-react';
 
 interface Trip {
@@ -98,6 +98,7 @@ export default function TripPage() {
   const [loginPassword, setLoginPassword] = useState('');
   const [loginError, setLoginError] = useState('');
   const [loginLoading, setLoginLoading] = useState(false);
+  const [selectedPartForLogin, setSelectedPartForLogin] = useState<Participant | null>(null);
 
   const [isOrgAuthOpen, setIsOrgAuthOpen] = useState(false);
   const [orgPassword, setOrgPassword] = useState('');
@@ -273,6 +274,7 @@ export default function TripPage() {
         setIsLoginOpen(false);
         setLoginName('');
         setLoginPassword('');
+        setSelectedPartForLogin(null);
         fetchAllData();
       } else {
         throw new Error('인증에 실패했습니다.');
@@ -290,10 +292,28 @@ export default function TripPage() {
     setSession(null);
   };
 
+  // Open password input modal to verify as an existing participant
+  const handleOpenLoginForParticipant = (part: Participant) => {
+    setSelectedPartForLogin(part);
+    setLoginName(part.name);
+    setLoginPassword('');
+    setLoginError('');
+    setIsLoginOpen(true);
+  };
+
+  // Open modal to register a new participant
+  const handleOpenAddParticipant = () => {
+    setSelectedPartForLogin(null);
+    setLoginName('');
+    setLoginPassword('');
+    setLoginError('');
+    setIsLoginOpen(true);
+  };
+
   // Claiming items
   const handleClaim = async (item: Item) => {
     if (!session) {
-      setIsLoginOpen(true);
+      alert('참석자 이름 옆의 연필 아이콘을 누르거나 하단의 참석자 추가를 눌러 먼저 본인 인증 로그인을 해주세요.');
       return;
     }
 
@@ -601,7 +621,7 @@ export default function TripPage() {
               {linkCopied ? '링크 복사 완료!' : '공유 링크 복사'}
             </button>
 
-            {session ? (
+            {session && (
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginLeft: 'auto' }}>
                 <span style={{ fontSize: '0.9rem', color: '#ffffff' }}>
                   접속: <strong style={{ color: 'var(--accent)' }}>{session.display_name}</strong>
@@ -613,14 +633,6 @@ export default function TripPage() {
                   <LogOut size={14} style={{ color: '#ffb3b3' }} /> 로그아웃
                 </button>
               </div>
-            ) : (
-              <button 
-                className="btn-flat btn-flat-secondary" 
-                style={{ height: '36px', padding: '0 14px', fontSize: '0.85rem', marginLeft: 'auto', border: '3px solid var(--text-primary)' }}
-                onClick={() => setIsLoginOpen(true)}
-              >
-                내 아이템 찜하기 (인증)
-              </button>
             )}
           </div>
 
@@ -796,6 +808,22 @@ export default function TripPage() {
                             나
                           </span>
                         )}
+                        <button
+                          onClick={() => handleOpenLoginForParticipant(part)}
+                          style={{
+                            background: 'transparent',
+                            color: 'var(--text-secondary)',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            padding: '4px',
+                            cursor: 'pointer',
+                          }}
+                          className="flat-card-interactive"
+                          title="이 참여자로 인증 로그인"
+                        >
+                          <Pencil size={12} />
+                        </button>
                       </span>
 
                       {isOrganizer && (
@@ -862,10 +890,39 @@ export default function TripPage() {
               })}
             </div>
           )}
+
+          {/* Add Participant Trigger Button at the bottom of the section */}
+          <div style={{ marginTop: '16px', borderTop: '3px solid var(--text-primary)', paddingTop: '16px' }}>
+            <button
+              className="btn-flat btn-flat-secondary flat-card-interactive"
+              style={{
+                width: '100%',
+                height: '44px',
+                fontSize: '0.9rem',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                border: '3px solid var(--text-primary)',
+                background: '#ffffff',
+                borderRadius: '9999px' // Clickable pill shape
+              }}
+              onClick={handleOpenAddParticipant}
+            >
+              <PlusCircle size={14} /> 참석자 추가
+            </button>
+          </div>
         </section>
 
         {/* MODAL 1: Login / Join */}
-        <Modal isOpen={isLoginOpen} onClose={() => setIsLoginOpen(false)} title="내 아이템 찜하기">
+        <Modal 
+          isOpen={isLoginOpen} 
+          onClose={() => {
+            setIsLoginOpen(false);
+            setSelectedPartForLogin(null);
+          }} 
+          title={selectedPartForLogin ? `${selectedPartForLogin.display_name} 인증` : "참석자 추가"}
+        >
           <form onSubmit={handleLoginSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             {loginError && (
               <div style={{ background: 'var(--danger-light)', border: '3px solid var(--danger)', color: 'var(--danger)', padding: '10px', borderRadius: 'var(--radius-md)', fontSize: '0.85rem', fontWeight: 600 }}>
@@ -874,8 +931,9 @@ export default function TripPage() {
             )}
 
             <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-              이름과 4자리 비밀번호를 입력해 주세요. <br />
-              기존 이름과 비밀번호가 일치하면 이전 찜 내역 세션이 복원됩니다.
+              {selectedPartForLogin 
+                ? "참석자 등록 당시 설정했던 숫자 4자리 비밀번호를 입력해 주세요."
+                : "이름과 4자리 비밀번호를 입력해 주세요. 신규 추가 시 이모지가 자동으로 생성됩니다."}
             </p>
 
             <div className="form-group">
@@ -887,6 +945,7 @@ export default function TripPage() {
                 placeholder="예: 민수, 지혜"
                 value={loginName}
                 onChange={(e) => setLoginName(e.target.value)}
+                disabled={!!selectedPartForLogin} // Prefilled and disabled when logging in via Pencil icon
                 required
               />
             </div>
