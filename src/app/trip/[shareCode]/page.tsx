@@ -313,6 +313,22 @@ export default function TripPage() {
 
   // Claiming items
   const handleClaim = async (item: Item) => {
+    if (isOrganizer) {
+      const confirmDelete = window.confirm(`정말로 '${item.name}' 장비를 목록에서 영구 삭제하시겠습니까?`);
+      if (!confirmDelete) return;
+
+      try {
+        await supabase.from('claims').delete().eq('item_id', item.id);
+        const { error } = await supabase.from('items').delete().eq('id', item.id);
+        if (error) throw error;
+        fetchAllData();
+      } catch (err: any) {
+        console.error(err);
+        alert('장비 삭제에 실패했습니다.');
+      }
+      return;
+    }
+
     if (!session) {
       alert('참석자 이름 옆의 연필 아이콘을 누르거나 하단의 참석자 추가를 눌러 먼저 본인 인증 로그인을 해주세요.');
       return;
@@ -667,7 +683,7 @@ export default function TripPage() {
                 return (
                   <button
                     key={item.id}
-                    disabled={isOut}
+                    disabled={isOut && !isOrganizer}
                     onClick={() => handleClaim(item)}
                     style={{
                       display: 'flex',
@@ -678,7 +694,7 @@ export default function TripPage() {
                       borderRadius: '9999px', // Pill shape
                       border: isOut ? '0' : '3px solid var(--text-primary)',
                       background: isOut ? 'var(--bg-muted-hover)' : getItemColor(item.name), 
-                      cursor: isOut ? 'not-allowed' : 'pointer',
+                      cursor: (isOut && !isOrganizer) ? 'not-allowed' : 'pointer',
                       width: '100%',
                       textAlign: 'center',
                       minHeight: '52px'
