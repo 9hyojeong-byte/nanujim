@@ -704,55 +704,6 @@ export default function TripPage() {
           )}
         </section>
 
-        {/* 3. My backpack slot */}
-        {session && (
-          <section className="flat-card flat-card-emerald">
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-              <Backpack size={20} style={{ color: 'var(--secondary)' }} />
-              <h2 style={{ fontSize: '1.25rem', color: 'var(--text-primary)' }}>내가 챙길 장비 목록 🎒</h2>
-            </div>
-
-            {myClaims.length === 0 ? (
-              <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', lineHeight: 1.5 }}>
-                아직 내 배낭에 담은 장비가 없습니다. 위 목록에서 챙길 장비를 클릭해 보세요!
-              </p>
-            ) : (
-              <div>
-                <p style={{ fontSize: '0.8rem', color: 'var(--danger)', fontWeight: 700, marginBottom: '10px' }}>
-                  * 아이템을 클릭하면 바로 내 배낭에서 반납(취소)됩니다.
-                </p>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))', gap: '10px' }}>
-                  {myClaims.map((claim) => {
-                    const item = items.find((i) => i.id === claim.item_id);
-                    if (!item) return null;
-                    return (
-                      <button
-                        key={claim.id}
-                        onClick={() => handleAdjustClaim(item.id, claim.quantity, -1)}
-                        className="btn-flat btn-flat-secondary flat-card-interactive-white animate-pop-in"
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          padding: '10px 18px',
-                          borderRadius: '9999px', // Pill shape
-                          border: '3px solid var(--secondary)',
-                          background: getItemColor(item.name), 
-                          width: '100%',
-                          minHeight: '44px',
-                          textAlign: 'center'
-                        }}
-                        title="클릭 시 반납 (취소)"
-                      >
-                        <span style={{ fontWeight: 800, fontSize: '0.85rem', wordBreak: 'break-all' }}>{item.name}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-          </section>
-        )}
 
         {/* 4. Live allocation cards */}
         <section className="flat-card flat-card-white">
@@ -868,9 +819,9 @@ export default function TripPage() {
                               <span style={{ fontWeight: 700 }}>
                                 {item.name}
                               </span>
-                              {isOrganizer && (
+                              {(isSelf || isOrganizer) && (
                                 <button 
-                                  onClick={() => handleCancelClaimAdmin(claim)}
+                                  onClick={() => isSelf ? handleAdjustClaim(item.id, claim.quantity, -1) : handleCancelClaimAdmin(claim)}
                                   style={{ 
                                     color: 'var(--danger)', 
                                     padding: '2px', 
@@ -879,10 +830,12 @@ export default function TripPage() {
                                     display: 'inline-flex',
                                     alignItems: 'center',
                                     justifyContent: 'center',
-                                    border: '2px solid var(--danger)'
+                                    border: '2px solid var(--danger)',
+                                    cursor: 'pointer',
+                                    marginLeft: '4px'
                                   }}
                                   className="flat-card-interactive"
-                                  title="찜 강제 취소"
+                                  title={isSelf ? "찜 반납하기" : "찜 강제 취소"}
                                 >
                                   <Minus size={10} style={{ color: 'var(--danger)' }} />
                                 </button>
