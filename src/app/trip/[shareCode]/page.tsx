@@ -621,20 +621,6 @@ export default function TripPage() {
               {linkCopied ? <Check size={14} style={{ color: 'var(--secondary)' }} /> : <Copy size={14} />}
               {linkCopied ? '링크 복사 완료!' : '공유 링크 복사'}
             </button>
-
-            {session && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginLeft: 'auto' }}>
-                <span style={{ fontSize: '0.9rem', color: '#ffffff' }}>
-                  접속: <strong style={{ color: 'var(--accent)' }}>{session.display_name}</strong>
-                </span>
-                <button 
-                  onClick={handleLogout} 
-                  style={{ color: '#ffb3b3', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '4px', background: 'transparent', padding: '6px' }}
-                >
-                  <LogOut size={14} style={{ color: '#ffb3b3' }} /> 로그아웃
-                </button>
-              </div>
-            )}
           </div>
 
           {isOrganizer && (
@@ -796,35 +782,55 @@ export default function TripPage() {
                       <span style={{ fontWeight: 800, fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
                         <Smile size={16} style={{ color: isSelf ? 'var(--primary)' : 'var(--text-secondary)' }} />
                         {part.display_name} 
-                        {isSelf && (
-                          <span style={{ 
-                            fontSize: '0.75rem', 
-                            fontWeight: 800, 
-                            color: '#ffffff', 
-                            background: 'var(--primary)', 
-                            padding: '2px 8px', 
-                            borderRadius: '4px',
-                            border: '1px solid var(--text-primary)'
-                          }}>
-                            나
-                          </span>
+                        {isSelf ? (
+                          <>
+                            <span style={{ 
+                              fontSize: '0.75rem', 
+                              fontWeight: 800, 
+                              color: '#ffffff', 
+                              background: 'var(--primary)', 
+                              padding: '2px 8px', 
+                              borderRadius: '4px',
+                              border: '1px solid var(--text-primary)'
+                            }}>
+                              나
+                            </span>
+                            <button
+                              onClick={handleLogout}
+                              style={{
+                                background: 'var(--primary)',
+                                color: '#ffffff',
+                                border: '2px solid var(--text-primary)',
+                                borderRadius: '9999px',
+                                padding: '2px 10px',
+                                fontSize: '0.75rem',
+                                fontWeight: 800,
+                                cursor: 'pointer',
+                              }}
+                              className="flat-card-interactive"
+                              title="선택 완료 및 저장"
+                            >
+                              저장하기
+                            </button>
+                          </>
+                        ) : (
+                          <button
+                            onClick={() => handleOpenLoginForParticipant(part)}
+                            style={{
+                              background: 'transparent',
+                              color: 'var(--text-secondary)',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              padding: '4px',
+                              cursor: 'pointer',
+                            }}
+                            className="flat-card-interactive"
+                            title="이 참여자로 인증 로그인"
+                          >
+                            <Pencil size={12} />
+                          </button>
                         )}
-                        <button
-                          onClick={() => handleOpenLoginForParticipant(part)}
-                          style={{
-                            background: 'transparent',
-                            color: 'var(--text-secondary)',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            padding: '4px',
-                            cursor: 'pointer',
-                          }}
-                          className="flat-card-interactive"
-                          title="이 참여자로 인증 로그인"
-                        >
-                          <Pencil size={12} />
-                        </button>
                       </span>
 
                       {isOrganizer && (
