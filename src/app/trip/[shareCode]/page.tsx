@@ -150,7 +150,8 @@ export default function TripPage() {
         .from('items')
         .select('*')
         .eq('trip_id', tripData.id)
-        .order('created_at', { ascending: true });
+        .order('created_at', { ascending: true })
+        .order('id', { ascending: true });
       if (itemsError) throw itemsError;
       setItems(itemsData || []);
 
