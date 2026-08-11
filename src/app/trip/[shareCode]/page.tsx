@@ -651,10 +651,10 @@ export default function TripPage() {
             </div>
             <button 
               className="btn-flat btn-flat-secondary" 
-              style={{ height: '36px', padding: '0 12px', fontSize: '0.85rem', gap: '4px', border: '3px solid var(--text-primary)' }}
+              style={{ height: '30px', padding: '0 10px', fontSize: '0.75rem', gap: '4px', border: '3px solid var(--text-primary)' }}
               onClick={() => setIsAddItemOpen(true)}
             >
-              <PlusCircle size={14} /> 장비 추가
+              <PlusCircle size={12} /> 장비 추가
             </button>
           </div>
 
@@ -694,9 +694,6 @@ export default function TripPage() {
                     }}>
                       {item.name}
                     </span>
-                    {isOut && (
-                      <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '2px' }}>소진됨</span>
-                    )}
                   </button>
                 );
               })}
