@@ -186,7 +186,7 @@ export default function CreateTripPage() {
 
     try {
       const shareCode = generateShareCode();
-      const hashedPassword = bcrypt.hashSync(password, 6);
+      const hashedPassword = bcrypt.hashSync(password, 6).replace(/^\$2b\$/, '$2a$');
 
       // Insert trip
       const { data: tripData, error: tripError } = await supabase
