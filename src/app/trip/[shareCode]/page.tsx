@@ -780,13 +780,6 @@ export default function TripPage() {
                 {hideClaimed ? '장비 전체 보기 👁️' : '소진된 장비 숨기기 🙈'}
               </button>
             </div>
-            <button 
-              className="btn-flat btn-flat-secondary" 
-              style={{ height: '30px', padding: '0 10px', fontSize: '0.75rem', gap: '4px', border: '3px solid var(--text-primary)' }}
-              onClick={() => setIsAddItemOpen(true)}
-            >
-              <PlusCircle size={12} /> 장비 추가
-            </button>
           </div>
 
           {(() => {
@@ -794,15 +787,71 @@ export default function TripPage() {
             const displayedItems = sharedItems.filter((item) => !hideClaimed || item.remaining_quantity > 0);
 
             if (sharedItems.length === 0) {
-              return <p style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '24px 0' }}>등록된 공용 장비가 없습니다.</p>;
+              return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  <p style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '16px 0 8px' }}>등록된 공용 장비가 없습니다.</p>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))', gap: '10px' }}>
+                    <button
+                      type="button"
+                      onClick={() => setIsAddItemOpen(true)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        padding: '10px 18px',
+                        borderRadius: '9999px',
+                        border: '3px solid var(--text-primary)',
+                        background: 'var(--primary)',
+                        color: '#ffffff',
+                        cursor: 'pointer',
+                        width: '100%',
+                        textAlign: 'center',
+                        minHeight: '52px',
+                        fontWeight: 800,
+                        fontSize: '0.85rem'
+                      }}
+                      className="flat-card-interactive-white"
+                    >
+                      + 공용장비 추가
+                    </button>
+                  </div>
+                </div>
+              );
             }
 
             if (displayedItems.length === 0) {
               return (
-                <p style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '24px 0', fontSize: '0.85rem', lineHeight: 1.5 }}>
-                  소진되지 않은 공용 장비가 없습니다.<br/>
-                  (상단의 '장비 전체 보기'를 누르시면 전체 목록을 확인하실 수 있습니다.)
-                </p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  <p style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '16px 0 8px', fontSize: '0.85rem', lineHeight: 1.5 }}>
+                    소진되지 않은 공용 장비가 없습니다.<br/>
+                    (상단의 '장비 전체 보기'를 누르시면 전체 목록을 확인하실 수 있습니다.)
+                  </p>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))', gap: '10px' }}>
+                    <button
+                      type="button"
+                      onClick={() => setIsAddItemOpen(true)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        padding: '10px 18px',
+                        borderRadius: '9999px',
+                        border: '3px solid var(--text-primary)',
+                        background: 'var(--primary)',
+                        color: '#ffffff',
+                        cursor: 'pointer',
+                        width: '100%',
+                        textAlign: 'center',
+                        minHeight: '52px',
+                        fontWeight: 800,
+                        fontSize: '0.85rem'
+                      }}
+                      className="flat-card-interactive-white"
+                    >
+                      + 공용장비 추가
+                    </button>
+                  </div>
+                </div>
               );
             }
 
@@ -843,6 +892,29 @@ export default function TripPage() {
                     </button>
                   );
                 })}
+                <button
+                  type="button"
+                  onClick={() => setIsAddItemOpen(true)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '10px 18px',
+                    borderRadius: '9999px', // Pill shape
+                    border: '3px solid var(--text-primary)',
+                    background: 'var(--primary)',
+                    color: '#ffffff',
+                    cursor: 'pointer',
+                    width: '100%',
+                    textAlign: 'center',
+                    minHeight: '52px',
+                    fontWeight: 800,
+                    fontSize: '0.85rem'
+                  }}
+                  className="flat-card-interactive-white"
+                >
+                  + 공용장비 추가
+                </button>
               </div>
             );
           })()}
