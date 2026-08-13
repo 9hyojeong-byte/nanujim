@@ -122,6 +122,9 @@ export default function TripPage() {
   const [personalError, setPersonalError] = useState('');
   const [personalLoading, setPersonalLoading] = useState(false);
 
+  // Toggle for hiding claimed items
+  const [hideClaimed, setHideClaimed] = useState(true);
+
   // Session keys
   const getSessionKey = useCallback(() => `nanujim_session_${shareCode}`, [shareCode]);
   const getOrgKey = useCallback(() => `nanujim_org_${shareCode}`, [shareCode]);
@@ -757,6 +760,25 @@ export default function TripPage() {
             <div>
               <h2 style={{ fontSize: '1.3rem' }}>남은 공용 장비 🎒</h2>
               <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>버튼을 클릭하면 내 가방으로 찜해집니다.</p>
+              <button
+                type="button"
+                onClick={() => setHideClaimed(!hideClaimed)}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: 'var(--primary)',
+                  fontSize: '0.8rem',
+                  fontWeight: 800,
+                  textDecoration: 'underline',
+                  cursor: 'pointer',
+                  marginTop: '4px',
+                  padding: 0,
+                  textAlign: 'left',
+                  display: 'block'
+                }}
+              >
+                {hideClaimed ? '장비 전체 보기 👁️' : '소진된 장비 숨기기 🙈'}
+              </button>
             </div>
             <button 
               className="btn-flat btn-flat-secondary" 
@@ -767,47 +789,63 @@ export default function TripPage() {
             </button>
           </div>
 
-          {items.filter((item) => !item.name.endsWith(' [personal]')).length === 0 ? (
-            <p style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '24px 0' }}>등록된 공용 장비가 없습니다.</p>
-          ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))', gap: '10px' }}>
-              {items.filter((item) => !item.name.endsWith(' [personal]')).map((item) => {
-                const isOut = item.remaining_quantity <= 0;
-                return (
-                  <button
-                    key={item.id}
-                    disabled={isOut && !isOrganizer}
-                    onClick={() => handleClaim(item)}
-                    style={{
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      padding: '10px 18px',
-                      borderRadius: '9999px', // Pill shape
-                      border: isOut ? '0' : '3px solid var(--text-primary)',
-                      background: isOut ? 'var(--bg-muted-hover)' : getItemColor(item.name), 
-                      cursor: (isOut && !isOrganizer) ? 'not-allowed' : 'pointer',
-                      width: '100%',
-                      textAlign: 'center',
-                      minHeight: '52px'
-                    }}
-                    className={!isOut ? 'flat-card-interactive-white' : ''}
-                  >
-                    <span style={{ 
-                      fontWeight: 800, 
-                      fontSize: '0.85rem', 
-                      color: isOut ? 'var(--text-muted)' : 'var(--text-primary)',
-                      textDecoration: isOut ? 'line-through' : 'none',
-                      wordBreak: 'break-all'
-                    }}>
-                      {item.name}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          )}
+          {(() => {
+            const sharedItems = items.filter((item) => !item.name.endsWith(' [personal]'));
+            const displayedItems = sharedItems.filter((item) => !hideClaimed || item.remaining_quantity > 0);
+
+            if (sharedItems.length === 0) {
+              return <p style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '24px 0' }}>등록된 공용 장비가 없습니다.</p>;
+            }
+
+            if (displayedItems.length === 0) {
+              return (
+                <p style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '24px 0', fontSize: '0.85rem', lineHeight: 1.5 }}>
+                  소진되지 않은 공용 장비가 없습니다.<br/>
+                  (상단의 '장비 전체 보기'를 누르시면 전체 목록을 확인하실 수 있습니다.)
+                </p>
+              );
+            }
+
+            return (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))', gap: '10px' }}>
+                {displayedItems.map((item) => {
+                  const isOut = item.remaining_quantity <= 0;
+                  return (
+                    <button
+                      key={item.id}
+                      disabled={isOut && !isOrganizer}
+                      onClick={() => handleClaim(item)}
+                      style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        padding: '10px 18px',
+                        borderRadius: '9999px', // Pill shape
+                        border: isOut ? '0' : '3px solid var(--text-primary)',
+                        background: isOut ? 'var(--bg-muted-hover)' : getItemColor(item.name), 
+                        cursor: (isOut && !isOrganizer) ? 'not-allowed' : 'pointer',
+                        width: '100%',
+                        textAlign: 'center',
+                        minHeight: '52px'
+                      }}
+                      className={!isOut ? 'flat-card-interactive-white' : ''}
+                    >
+                      <span style={{ 
+                        fontWeight: 800, 
+                        fontSize: '0.85rem', 
+                        color: isOut ? 'var(--text-muted)' : 'var(--text-primary)',
+                        textDecoration: isOut ? 'line-through' : 'none',
+                        wordBreak: 'break-all'
+                      }}>
+                        {item.name}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            );
+          })()}
         </section>
 
 
