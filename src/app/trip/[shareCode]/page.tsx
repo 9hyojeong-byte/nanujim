@@ -385,7 +385,7 @@ export default function TripPage() {
         const claim = claims.find((c) => c.item_id === itemId && c.participant_id === session.id);
         if (!claim) return;
 
-        if (item.source === 'personal') {
+        if (item.name.endsWith(' [personal]')) {
           // If it's a personal item, delete both the claim and the item
           await supabase.from('claims').delete().eq('id', claim.id);
           await supabase.from('items').delete().eq('id', itemId);
@@ -466,7 +466,7 @@ export default function TripPage() {
     if (!isOrganizer) return;
     try {
       const item = items.find((i) => i.id === claim.item_id);
-      if (item && item.source === 'personal') {
+      if (item && item.name.endsWith(' [personal]')) {
         // Delete both claim and item
         await supabase.from('claims').delete().eq('id', claim.id);
         await supabase.from('items').delete().eq('id', item.id);
@@ -602,10 +602,10 @@ export default function TripPage() {
       // 1. Bulk insert separate records representing personal item tokens
       const itemsToInsert = Array.from({ length: personalItemQty }).map(() => ({
         trip_id: trip?.id,
-        name: personalItemName.trim(),
+        name: personalItemName.trim() + ' [personal]',
         total_quantity: 1,
         remaining_quantity: 0, // Claimed immediately
-        source: 'personal',
+        source: 'custom',
         catalog_item_id: null,
       }));
 
@@ -767,11 +767,11 @@ export default function TripPage() {
             </button>
           </div>
 
-          {items.filter((item) => item.source !== 'personal').length === 0 ? (
+          {items.filter((item) => !item.name.endsWith(' [personal]')).length === 0 ? (
             <p style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '24px 0' }}>등록된 공용 장비가 없습니다.</p>
           ) : (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))', gap: '10px' }}>
-              {items.filter((item) => item.source !== 'personal').map((item) => {
+              {items.filter((item) => !item.name.endsWith(' [personal]')).map((item) => {
                 const isOut = item.remaining_quantity <= 0;
                 return (
                   <button
@@ -908,7 +908,8 @@ export default function TripPage() {
                         {partClaims.map((claim) => {
                           const item = items.find((i) => i.id === claim.item_id);
                           if (!item) return null;
-                          const isPersonal = item.source === 'personal';
+                          const isPersonal = item.name.endsWith(' [personal]');
+                          const cleanName = isPersonal ? item.name.slice(0, -11) : item.name;
                           return (
                             <div 
                               key={claim.id} 
@@ -916,7 +917,7 @@ export default function TripPage() {
                                 display: 'inline-flex', 
                                 alignItems: 'center', 
                                 gap: '6px',
-                                background: getItemColor(item.name), 
+                                background: getItemColor(cleanName), 
                                 borderRadius: '9999px', // Pill shape
                                 padding: '4px 12px',
                                 fontSize: '0.8rem',
@@ -925,7 +926,7 @@ export default function TripPage() {
                               }}
                             >
                               <span style={{ fontWeight: 700 }}>
-                                {item.name}
+                                {cleanName}
                               </span>
                               {isPersonal && (
                                 <span style={{
