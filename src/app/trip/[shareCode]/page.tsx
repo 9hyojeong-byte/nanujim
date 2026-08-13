@@ -250,6 +250,91 @@ export default function TripPage() {
     });
   };
 
+  // Copy status summary report helper
+  const handleCopyStatus = () => {
+    const tripName = trip?.name || '';
+    const shareUrl = window.location.href;
+
+    // 1. Total equipment list (excluding personal items, grouped and counted, sorted alphabetically)
+    const totalGroup: { [key: string]: number } = {};
+    items.forEach((item) => {
+      if (!item.name.endsWith(' [personal]')) {
+        totalGroup[item.name] = (totalGroup[item.name] || 0) + 1;
+      }
+    });
+    const totalKeys = Object.keys(totalGroup).sort((a, b) => a.localeCompare(b, 'ko'));
+    const totalListStr = totalKeys.map((name) => {
+      const count = totalGroup[name];
+      return count > 1 ? `${name} ${count}` : name;
+    }).join(' / ') + (totalKeys.length > 0 ? ' / ' : '');
+
+    // 2. Claimed items per participant (using raw name without emoji)
+    const personalRows = participants.map((part) => {
+      const partClaims = claims.filter((c) => c.participant_id === part.id);
+      const itemGroup: { [key: string]: { count: number; isPersonal: boolean } } = {};
+      partClaims.forEach((claim) => {
+        const item = items.find((i) => i.id === claim.item_id);
+        if (!item) return;
+        const isPersonal = item.name.endsWith(' [personal]');
+        const cleanName = isPersonal ? item.name.slice(0, -11) : item.name;
+
+        if (!itemGroup[cleanName]) {
+          itemGroup[cleanName] = { count: 0, isPersonal };
+        }
+        itemGroup[cleanName].count += 1;
+      });
+
+      const partKeys = Object.keys(itemGroup).sort((a, b) => a.localeCompare(b, 'ko'));
+      const itemsStr = partKeys.map((name) => {
+        const { count, isPersonal } = itemGroup[name];
+        let str = name;
+        if (count > 1) {
+          str += count;
+        }
+        if (isPersonal) {
+          str += '(개인추가)';
+        }
+        return str;
+      }).join(' / ');
+
+      return `${part.name} : ${itemsStr}`;
+    }).join('\n');
+
+    // 3. Unassigned items (remaining_quantity > 0, excluding personal items)
+    const unassignedGroup: { [key: string]: number } = {};
+    items.forEach((item) => {
+      if (!item.name.endsWith(' [personal]') && item.remaining_quantity > 0) {
+        unassignedGroup[item.name] = (unassignedGroup[item.name] || 0) + item.remaining_quantity;
+      }
+    });
+    const unassignedKeys = Object.keys(unassignedGroup).sort((a, b) => a.localeCompare(b, 'ko'));
+    const unassignedListStr = unassignedKeys.map((name) => {
+      const count = unassignedGroup[name];
+      return count > 1 ? `${name} ${count}` : name;
+    }).join(' / ');
+
+    // 4. Build full report
+    const text = `${tripName} 공용장비 리스트
+from 나누짐 (Nanujim) 🌿 - 여행 공용 장비 나눔
+${shareUrl}
+
+<공용장비 전체 리스트>
+${totalListStr}
+
+<개인 별 담당 장비>
+${personalRows}
+
+<아직 담당이 없는 장비 > 
+${unassignedListStr}`;
+
+    navigator.clipboard.writeText(text).then(() => {
+      alert('현황이 클립보드에 복사되었습니다!');
+    }).catch((err) => {
+      console.error('Failed to copy status:', err);
+      alert('복사에 실패했습니다. 직접 복사해 주세요.');
+    });
+  };
+
   // Participant authentication
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -732,6 +817,13 @@ export default function TripPage() {
             >
               {linkCopied ? <Check size={14} style={{ color: 'var(--secondary)' }} /> : <Copy size={14} />}
               {linkCopied ? '링크 복사 완료!' : '공유 링크 복사'}
+            </button>
+            <button 
+              className="btn-flat btn-flat-secondary" 
+              style={{ height: '36px', padding: '0 12px', fontSize: '0.85rem', gap: '6px', border: '3px solid var(--text-primary)' }}
+              onClick={handleCopyStatus}
+            >
+              현황 복사하기 📋
             </button>
           </div>
 
