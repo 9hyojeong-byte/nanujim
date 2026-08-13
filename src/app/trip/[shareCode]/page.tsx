@@ -114,6 +114,14 @@ export default function TripPage() {
   const [addItemError, setAddItemError] = useState('');
   const [addItemLoading, setAddItemLoading] = useState(false);
 
+  // Personal item modal states
+  const [isAddPersonalOpen, setIsAddPersonalOpen] = useState(false);
+  const [personalItemName, setPersonalItemName] = useState('');
+  const [personalItemQty, setPersonalItemQty] = useState(1);
+  const [addPersonalTarget, setAddPersonalTarget] = useState<Participant | null>(null);
+  const [personalError, setPersonalError] = useState('');
+  const [personalLoading, setPersonalLoading] = useState(false);
+
   // Session keys
   const getSessionKey = useCallback(() => `nanujim_session_${shareCode}`, [shareCode]);
   const getOrgKey = useCallback(() => `nanujim_org_${shareCode}`, [shareCode]);
@@ -360,6 +368,9 @@ export default function TripPage() {
     if (!session) return;
 
     try {
+      const item = items.find((i) => i.id === itemId);
+      if (!item) return;
+
       if (delta > 0) {
         const { data: success, error } = await supabase.rpc('claim_item', {
           p_trip_id: trip?.id,
@@ -374,6 +385,14 @@ export default function TripPage() {
         const claim = claims.find((c) => c.item_id === itemId && c.participant_id === session.id);
         if (!claim) return;
 
+        if (item.source === 'personal') {
+          // If it's a personal item, delete both the claim and the item
+          await supabase.from('claims').delete().eq('id', claim.id);
+          await supabase.from('items').delete().eq('id', itemId);
+          fetchAllData();
+          return;
+        }
+
         if (claim.quantity <= 1) {
           const { error: delError } = await supabase.from('claims').delete().eq('id', claim.id);
           if (delError) throw delError;
@@ -385,14 +404,11 @@ export default function TripPage() {
           if (updError) throw updError;
         }
 
-        const item = items.find((i) => i.id === itemId);
-        if (item) {
-          const { error: itemError } = await supabase
-            .from('items')
-            .update({ remaining_quantity: item.remaining_quantity + 1 })
-            .eq('id', itemId);
-          if (itemError) throw itemError;
-        }
+        const { error: itemError } = await supabase
+          .from('items')
+          .update({ remaining_quantity: item.remaining_quantity + 1 })
+          .eq('id', itemId);
+        if (itemError) throw itemError;
       }
       fetchAllData();
     } catch (err: any) {
@@ -449,16 +465,22 @@ export default function TripPage() {
   const handleCancelClaimAdmin = async (claim: Claim) => {
     if (!isOrganizer) return;
     try {
-      const { error: delError } = await supabase.from('claims').delete().eq('id', claim.id);
-      if (delError) throw delError;
-
       const item = items.find((i) => i.id === claim.item_id);
-      if (item) {
-        const { error: itemError } = await supabase
-          .from('items')
-          .update({ remaining_quantity: item.remaining_quantity + claim.quantity })
-          .eq('id', item.id);
-        if (itemError) throw itemError;
+      if (item && item.source === 'personal') {
+        // Delete both claim and item
+        await supabase.from('claims').delete().eq('id', claim.id);
+        await supabase.from('items').delete().eq('id', item.id);
+      } else {
+        const { error: delError } = await supabase.from('claims').delete().eq('id', claim.id);
+        if (delError) throw delError;
+
+        if (item) {
+          const { error: itemError } = await supabase
+            .from('items')
+            .update({ remaining_quantity: item.remaining_quantity + claim.quantity })
+            .eq('id', item.id);
+          if (itemError) throw itemError;
+        }
       }
       fetchAllData();
     } catch (err: any) {
@@ -551,6 +573,77 @@ export default function TripPage() {
     setAddItemName(catItem.name);
     setAddItemCatalogId(catItem.id);
     setAddItemSource('recommended');
+  };
+
+  const handleOpenAddPersonalItem = (part: Participant) => {
+    setAddPersonalTarget(part);
+    setPersonalItemName('');
+    setPersonalItemQty(1);
+    setPersonalError('');
+    setIsAddPersonalOpen(true);
+  };
+
+  const handlePersonalSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!addPersonalTarget) return;
+    if (!personalItemName.trim()) {
+      setPersonalError('장비 이름을 입력해 주세요.');
+      return;
+    }
+    if (personalItemQty <= 0) {
+      setPersonalError('수량은 1개 이상 입력해 주세요.');
+      return;
+    }
+
+    setPersonalLoading(true);
+    setPersonalError('');
+
+    try {
+      // 1. Bulk insert separate records representing personal item tokens
+      const itemsToInsert = Array.from({ length: personalItemQty }).map(() => ({
+        trip_id: trip?.id,
+        name: personalItemName.trim(),
+        total_quantity: 1,
+        remaining_quantity: 0, // Claimed immediately
+        source: 'personal',
+        catalog_item_id: null,
+      }));
+
+      const { data: insertedItems, error: insertError } = await supabase
+        .from('items')
+        .insert(itemsToInsert)
+        .select();
+
+      if (insertError) throw insertError;
+      if (!insertedItems || insertedItems.length === 0) {
+        throw new Error('장비를 추가하는 도중 오류가 발생했습니다.');
+      }
+
+      // 2. Insert claims
+      const claimsToInsert = insertedItems.map((item: any) => ({
+        trip_id: trip?.id,
+        item_id: item.id,
+        participant_id: addPersonalTarget.id,
+        quantity: 1
+      }));
+
+      const { error: claimsError } = await supabase
+        .from('claims')
+        .insert(claimsToInsert);
+
+      if (claimsError) throw claimsError;
+
+      setIsAddPersonalOpen(false);
+      setPersonalItemName('');
+      setPersonalItemQty(1);
+      setAddPersonalTarget(null);
+      fetchAllData();
+    } catch (err: any) {
+      console.error(err);
+      setPersonalError(err.message || '장비 추가에 실패했습니다.');
+    } finally {
+      setPersonalLoading(false);
+    }
   };
 
   if (loading) {
@@ -674,11 +767,11 @@ export default function TripPage() {
             </button>
           </div>
 
-          {items.length === 0 ? (
+          {items.filter((item) => item.source !== 'personal').length === 0 ? (
             <p style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '24px 0' }}>등록된 공용 장비가 없습니다.</p>
           ) : (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))', gap: '10px' }}>
-              {items.map((item) => {
+              {items.filter((item) => item.source !== 'personal').map((item) => {
                 const isOut = item.remaining_quantity <= 0;
                 return (
                   <button
@@ -808,13 +901,14 @@ export default function TripPage() {
                       )}
                     </div>
 
-                    {partClaims.length === 0 ? (
+                    {partClaims.length === 0 && !(isSelf || isOrganizer) ? (
                       <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>아직 선택한 장비가 없습니다.</span>
                     ) : (
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center' }}>
                         {partClaims.map((claim) => {
                           const item = items.find((i) => i.id === claim.item_id);
                           if (!item) return null;
+                          const isPersonal = item.source === 'personal';
                           return (
                             <div 
                               key={claim.id} 
@@ -826,12 +920,33 @@ export default function TripPage() {
                                 borderRadius: '9999px', // Pill shape
                                 padding: '4px 12px',
                                 fontSize: '0.8rem',
-                                border: '2px solid var(--text-primary)'
+                                border: '2px solid var(--text-primary)',
+                                position: 'relative'
                               }}
                             >
                               <span style={{ fontWeight: 700 }}>
                                 {item.name}
                               </span>
+                              {isPersonal && (
+                                <span style={{
+                                  position: 'absolute',
+                                  top: '-7px',
+                                  right: (isSelf || isOrganizer) ? '16px' : '-4px',
+                                  background: 'var(--primary)',
+                                  color: '#ffffff',
+                                  borderRadius: '50%',
+                                  width: '14px',
+                                  height: '14px',
+                                  fontSize: '0.65rem',
+                                  fontWeight: 900,
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  border: '1.5px solid var(--text-primary)',
+                                }}>
+                                  +
+                                </span>
+                              )}
                               {(isSelf || isOrganizer) && (
                                 <button 
                                   onClick={() => isSelf ? handleAdjustClaim(item.id, claim.quantity, -1) : handleCancelClaimAdmin(claim)}
@@ -856,6 +971,26 @@ export default function TripPage() {
                             </div>
                           );
                         })}
+                        {(isSelf || isOrganizer) && (
+                          <button
+                            onClick={() => handleOpenAddPersonalItem(part)}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              width: '28px',
+                              height: '28px',
+                              borderRadius: '50%',
+                              border: '2px solid var(--text-primary)',
+                              background: '#ffffff',
+                              cursor: 'pointer',
+                            }}
+                            className="flat-card-interactive"
+                            title="별도 개인 장비 추가"
+                          >
+                            <Plus size={14} style={{ color: 'var(--text-primary)' }} />
+                          </button>
+                        )}
                       </div>
                     )}
                   </div>
@@ -1061,6 +1196,63 @@ export default function TripPage() {
               disabled={addItemLoading}
             >
               {addItemLoading ? <Loader2 size={16} className="animate-spin" /> : '장비 등록'}
+            </button>
+          </form>
+        </Modal>
+
+        {/* MODAL 4: Add Personal Item */}
+        <Modal 
+          isOpen={isAddPersonalOpen} 
+          onClose={() => {
+            setIsAddPersonalOpen(false);
+            setAddPersonalTarget(null);
+          }} 
+          title="별도 개인 장비 추가"
+        >
+          <form onSubmit={handlePersonalSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            {personalError && (
+              <div style={{ background: 'var(--danger-light)', border: '3px solid var(--danger)', color: 'var(--danger)', padding: '10px', borderRadius: 'var(--radius-md)', fontSize: '0.85rem', fontWeight: 600 }}>
+                {personalError}
+              </div>
+            )}
+
+            <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+              여행장이 공용 장비로 지정하지 않은, 본인이 별도로 추가하여 지참할 공용 장비 이름과 수량을 기입해 주세요.
+            </p>
+
+            <div className="form-group">
+              <label className="form-label" htmlFor="personal-item-name">장비 이름</label>
+              <input 
+                id="personal-item-name"
+                type="text" 
+                className="flat-input" 
+                placeholder="예: 멀티툴, 블루투스 스피커"
+                value={personalItemName}
+                onChange={(e) => setPersonalItemName(e.target.value)}
+                required
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label" htmlFor="personal-item-qty">수량</label>
+              <input 
+                id="personal-item-qty"
+                type="number" 
+                className="flat-input" 
+                min={1}
+                value={personalItemQty}
+                onChange={(e) => setPersonalItemQty(parseInt(e.target.value) || 1)}
+                required
+              />
+            </div>
+
+            <button 
+              type="submit" 
+              className="btn-flat btn-flat-primary" 
+              style={{ width: '100%', height: '48px', marginTop: '8px' }}
+              disabled={personalLoading}
+            >
+              {personalLoading ? <Loader2 size={16} className="animate-spin" /> : '장비 추가'}
             </button>
           </form>
         </Modal>
